@@ -1,0 +1,83 @@
+[package]
+name        = "order-book"
+version     = "0.1.0"
+edition     = "2021"
+rust-version = "1.80"
+description = "Low-latency matching engine — actor per symbol, integer-tick prices, event-sourceable"
+license     = "MIT"
+repository  = "https://github.com/ISch-1/order-book"
+
+[[bin]]
+name = "order-book"
+path = "src/main.rs"
+
+[lib]
+name = "order_book"
+path = "src/lib.rs"
+
+[dependencies]
+# async runtime
+tokio          = { version = "1.40", features = ["full"] }
+tokio-stream   = "0.1"
+futures        = "0.3"
+
+# gRPC
+tonic          = "0.12"
+prost          = "0.13"
+prost-types    = "0.13"
+
+# HTTP (metrics + health)
+axum           = "0.7"
+tower          = "0.5"
+tower-http     = { version = "0.6", features = ["trace"] }
+hyper          = "1.4"
+
+# error handling
+anyhow         = "1.0"
+thiserror      = "1.0"
+
+# serialisation
+serde          = { version = "1", features = ["derive"] }
+serde_json     = "1"
+
+# ids and time
+uuid           = { version = "1.10", features = ["v4", "serde"] }
+chrono         = { version = "0.4", features = ["serde"] }
+
+# telemetry
+tracing                = "0.1"
+tracing-subscriber     = { version = "0.3", features = ["env-filter", "json"] }
+tracing-opentelemetry  = "0.25"
+opentelemetry          = "0.24"
+opentelemetry_sdk      = { version = "0.24", features = ["rt-tokio"] }
+opentelemetry-otlp     = { version = "0.17", features = ["grpc-tonic", "trace"] }
+
+# metrics — Prometheus
+metrics                    = "0.23"
+metrics-exporter-prometheus = "0.15"
+
+# config
+clap = { version = "4.5", features = ["derive", "env"] }
+
+[dev-dependencies]
+proptest       = "1.5"
+criterion      = { version = "0.5", features = ["html_reports"] }
+tokio-test     = "0.4"
+
+[build-dependencies]
+tonic-build    = "0.12"
+
+[[bench]]
+name    = "matching"
+harness = false
+
+[profile.release]
+lto           = "fat"
+codegen-units = 1
+panic         = "abort"
+strip         = true
+debug         = false
+
+[profile.bench]
+lto           = "fat"
+codegen-units = 1

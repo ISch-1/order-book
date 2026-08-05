@@ -1,0 +1,85 @@
+syntax = "proto3";
+
+package orderbook.v1;
+
+// The order book service.
+//
+// Design notes:
+//   * Prices are int64 ticks. One tick = the smallest price increment.
+//     Never a float. See ADR 0002.
+//   * Quantities are uint64 units (also fixed-point at the caller's scale).
+service OrderBookService {
+    // Place a new order. Returns the assigned order id and any trades executed
+    // synchronously against resting liquidity.
+    rpc PlaceOrder    (PlaceOrderRequest)    returns (PlaceOrderResponse);
+
+    // Cancel a resting order. Returns whether the order was found and removed.
+    rpc CancelOrder   (CancelOrderRequest)   returns (CancelOrderResponse);
+
+    // Snapshot of best bid / best ask and depth on both sides.
+    rpc GetTopOfBook  (GetTopOfBookRequest)  returns (TopOfBookSnapshot);
+}
+
+enum Side {
+    SIDE_UNSPECIFIED = 0;
+    SIDE_BUY         = 1;
+    SIDE_SELL        = 2;
+}
+
+enum OrderType {
+    ORDER_TYPE_UNSPECIFIED = 0;
+    ORDER_TYPE_LIMIT       = 1;
+    ORDER_TYPE_MARKET      = 2;
+}
+
+message PlaceOrderRequest {
+    string    symbol      = 1;
+    Side      side        = 2;
+    OrderType order_type  = 3;
+    int64     price_ticks = 4;   // ignored for market orders
+    uint64    quantity    = 5;
+    string    client_id   = 6;   // caller-supplied idempotency key (optional)
+}
+
+message PlaceOrderResponse {
+    string           order_id      = 1;
+    uint64           filled_qty    = 2;
+    uint64           remaining_qty = 3;
+    repeated Trade   trades        = 4;
+}
+
+message CancelOrderRequest {
+    string symbol   = 1;
+    string order_id = 2;
+}
+
+message CancelOrderResponse {
+    bool   removed        = 1;
+    uint64 remaining_qty  = 2;   // what was still resting when cancelled
+}
+
+message GetTopOfBookRequest {
+    string symbol = 1;
+    uint32 depth  = 2;           // levels per side; 1 for top-of-book only
+}
+
+message TopOfBookSnapshot {
+    string          symbol = 1;
+    repeated Level  bids   = 2;  // descending by price
+    repeated Level  asks   = 3;  // ascending by price
+    int64           seq    = 4;  // monotonic per-symbol sequence
+}
+
+message Level {
+    int64  price_ticks = 1;
+    uint64 quantity    = 2;
+    uint32 orders      = 3;
+}
+
+message Trade {
+    string taker_order_id  = 1;
+    string maker_order_id  = 2;
+    int64  price_ticks     = 3;
+    uint64 quantity        = 4;
+    int64  ts_epoch_micros = 5;
+}
