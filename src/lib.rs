@@ -2,19 +2,19 @@
 //!
 //! Public re-exports for tests, benches, and downstream consumers.
 
-pub mod engine;
 pub mod actor;
+pub mod config;
+pub mod engine;
 pub mod grpc;
 pub mod telemetry;
-pub mod config;
 
 pub use engine::{
     book::OrderBook,
+    error::EngineError,
+    events::EngineEvent,
     order::{Order, OrderId, OrderKind, Side},
     price::Price,
     trade::Trade,
-    error::EngineError,
-    events::EngineEvent,
 };
 
 pub use actor::{command::Command, symbol_actor::SymbolActor};

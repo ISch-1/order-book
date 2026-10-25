@@ -7,9 +7,17 @@ use super::{order::Order, order::OrderId, trade::Trade};
 /// of "append this to disk", not "re-derive the state change".
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EngineEvent {
-    OrderPlaced { order: Order },
-    OrderCancelled { id: OrderId, remaining_qty: u64 },
+    OrderPlaced {
+        order: Order,
+    },
+    OrderCancelled {
+        id: OrderId,
+        remaining_qty: u64,
+    },
     Traded(Trade),
     /// A market order that could not fully cross was dropped for the residual.
-    MarketResidualDropped { id: OrderId, dropped_qty: u64 },
+    MarketResidualDropped {
+        id: OrderId,
+        dropped_qty: u64,
+    },
 }

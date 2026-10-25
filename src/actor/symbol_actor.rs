@@ -5,11 +5,7 @@ use tracing::{debug, info};
 
 use crate::{
     actor::command::Command,
-    engine::{
-        book::OrderBook,
-        events::EngineEvent,
-        order::Side,
-    },
+    engine::{book::OrderBook, events::EngineEvent, order::Side},
     telemetry::metrics as m,
 };
 
@@ -47,7 +43,11 @@ impl SymbolActor {
         let symbol_for_task = symbol.clone();
         tokio::spawn(async move { actor.run(symbol_for_task).await });
 
-        SymbolHandle { tx: cmd_tx, events: evt_tx, symbol }
+        SymbolHandle {
+            tx: cmd_tx,
+            events: evt_tx,
+            symbol,
+        }
     }
 
     async fn run(mut self, symbol: String) {
@@ -75,7 +75,10 @@ impl SymbolActor {
                     let removed = self.book.cancel(id);
                     if let Some(rem) = removed {
                         m::cancelled_inc();
-                        let _ = self.events.send(EngineEvent::OrderCancelled { id, remaining_qty: rem });
+                        let _ = self.events.send(EngineEvent::OrderCancelled {
+                            id,
+                            remaining_qty: rem,
+                        });
                     }
                     let _ = reply.send(removed);
                 }

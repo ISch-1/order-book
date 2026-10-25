@@ -16,6 +16,11 @@ pub struct Config {
 
     /// Comma-separated list of symbols to pre-spawn actors for. Symbols not on
     /// this list are still spawned lazily on the first request.
-    #[arg(long, env = "OB_SYMBOLS", value_delimiter = ',', default_value = "BTC-USD")]
+    #[arg(
+        long,
+        env = "OB_SYMBOLS",
+        value_delimiter = ',',
+        default_value = "BTC-USD"
+    )]
     pub symbols: Vec<String>,
 }

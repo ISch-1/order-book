@@ -31,20 +31,21 @@ pub fn init_tracing(service_name: &'static str) -> anyhow::Result<()> {
         .context("install OTLP pipeline")?;
 
     let tracer = provider.tracer(service_name);
-    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
+    // The OpenTelemetry layer is generic over the subscriber it sits on, and the
+    // two branches stack different fmt layers, so each branch builds its own.
     let json_logs = std::env::var("RUST_LOG_FORMAT").ok().as_deref() == Some("json");
     if json_logs {
         tracing_subscriber::registry()
             .with(filter)
             .with(tracing_subscriber::fmt::layer().json())
-            .with(otel_layer)
+            .with(tracing_opentelemetry::layer().with_tracer(tracer))
             .init();
     } else {
         tracing_subscriber::registry()
             .with(filter)
             .with(tracing_subscriber::fmt::layer())
-            .with(otel_layer)
+            .with(tracing_opentelemetry::layer().with_tracer(tracer))
             .init();
     }
 

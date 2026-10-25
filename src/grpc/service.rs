@@ -75,21 +75,35 @@ impl OrderBookService for OrderBookGrpc {
         };
 
         let order = match crate::proto::OrderType::try_from(r.order_type).unwrap_or_default() {
-            crate::proto::OrderType::Limit => {
-                Order::limit(Uuid::new_v4(), side, Price(r.price_ticks), r.quantity, Utc::now().timestamp_micros())
+            crate::proto::OrderType::Limit => Order::limit(
+                Uuid::new_v4(),
+                side,
+                Price(r.price_ticks),
+                r.quantity,
+                Utc::now().timestamp_micros(),
+            ),
+            crate::proto::OrderType::Market => Order::market(
+                Uuid::new_v4(),
+                side,
+                r.quantity,
+                Utc::now().timestamp_micros(),
+            ),
+            _ => {
+                return Err(Status::invalid_argument(
+                    "order_type must be LIMIT or MARKET",
+                ))
             }
-            crate::proto::OrderType::Market => {
-                Order::market(Uuid::new_v4(), side, r.quantity, Utc::now().timestamp_micros())
-            }
-            _ => return Err(Status::invalid_argument("order_type must be LIMIT or MARKET")),
         };
-        let _ = OrderKind::Limit;   // silence unused-import warning if pruned
+        let _ = OrderKind::Limit; // silence unused-import warning if pruned
 
         let handle = self.registry.get_or_spawn(&r.symbol).await;
         let (tx, rx) = oneshot::channel();
         handle
             .tx
-            .send(Command::Place { order: order.clone(), reply: tx })
+            .send(Command::Place {
+                order: order.clone(),
+                reply: tx,
+            })
             .await
             .map_err(|_| Status::internal("actor mailbox closed"))?;
 
@@ -135,7 +149,9 @@ impl OrderBookService for OrderBookGrpc {
             .await
             .map_err(|_| Status::internal("actor mailbox closed"))?;
 
-        let removed = rx.await.map_err(|_| Status::internal("actor dropped reply"))?;
+        let removed = rx
+            .await
+            .map_err(|_| Status::internal("actor dropped reply"))?;
         Ok(Response::new(CancelOrderResponse {
             removed: removed.is_some(),
             remaining_qty: removed.unwrap_or(0),
@@ -158,7 +174,9 @@ impl OrderBookService for OrderBookGrpc {
             .await
             .map_err(|_| Status::internal("actor mailbox closed"))?;
 
-        let snap = rx.await.map_err(|_| Status::internal("actor dropped reply"))?;
+        let snap = rx
+            .await
+            .map_err(|_| Status::internal("actor dropped reply"))?;
         Ok(Response::new(TopOfBookSnapshot {
             symbol: snap.symbol,
             bids: snap.bids.into_iter().map(to_pb_level).collect(),

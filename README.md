@@ -42,18 +42,18 @@ make up
 make run
 # gRPC listening on :50051, HTTP (metrics + health) on :9100
 
-# 4. place an order via grpcurl
-grpcurl -plaintext \
+# 4. place an order via grpcurl (the server has no reflection, so pass the .proto)
+grpcurl -plaintext -import-path proto -proto order_book.proto \
   -d '{"symbol":"BTC-USD","side":"SIDE_SELL","orderType":"ORDER_TYPE_LIMIT","priceTicks":10100,"quantity":50}' \
   localhost:50051 orderbook.v1.OrderBookService/PlaceOrder
 
 # 5. place a crossing market order — should fill
-grpcurl -plaintext \
+grpcurl -plaintext -import-path proto -proto order_book.proto \
   -d '{"symbol":"BTC-USD","side":"SIDE_BUY","orderType":"ORDER_TYPE_MARKET","quantity":30}' \
   localhost:50051 orderbook.v1.OrderBookService/PlaceOrder
 
 # 6. peek at the book
-grpcurl -plaintext \
+grpcurl -plaintext -import-path proto -proto order_book.proto \
   -d '{"symbol":"BTC-USD","depth":5}' \
   localhost:50051 orderbook.v1.OrderBookService/GetTopOfBook
 ```
@@ -93,7 +93,7 @@ CI runs `fmt --check`, `clippy -D warnings`, all tests, plus a bench smoke pass 
 
 ## Benchmarks
 
-`cargo bench` produces a criterion report with p50/p95/p99 for each scenario:
+`cargo bench` produces a criterion report for each scenario (mean and median with confidence intervals, plus outlier analysis):
 
 - **Non-crossing limit place** on a book of 1 000 resting orders — measures the pure insert path.
 - **Market buy** consuming 5 units on the same book — measures a small match.

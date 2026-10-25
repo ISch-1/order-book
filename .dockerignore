@@ -4,5 +4,4 @@ target/
 docs/
 load/
 tests/
-benches/
 *.md

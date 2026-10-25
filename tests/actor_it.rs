@@ -5,12 +5,17 @@
 
 use order_book::{
     actor::{command::Command, symbol_actor::SymbolActor},
-    engine::{order::{Order, Side}, price::Price},
+    engine::{
+        order::{Order, Side},
+        price::Price,
+    },
 };
 use tokio::sync::oneshot;
 use uuid::Uuid;
 
-fn ts(n: i64) -> i64 { n }
+fn ts(n: i64) -> i64 {
+    n
+}
 
 async fn place(
     tx: &tokio::sync::mpsc::Sender<Command>,
@@ -69,14 +74,27 @@ async fn snapshot_reflects_current_top_of_book() {
 
     // 3 bids, 2 asks
     for (price, qty) in [(99, 1), (100, 2), (101, 3)] {
-        place(&tx, Order::limit(Uuid::new_v4(), Side::Buy, Price(price), qty, ts(0))).await;
+        place(
+            &tx,
+            Order::limit(Uuid::new_v4(), Side::Buy, Price(price), qty, ts(0)),
+        )
+        .await;
     }
     for (price, qty) in [(102, 5), (103, 6)] {
-        place(&tx, Order::limit(Uuid::new_v4(), Side::Sell, Price(price), qty, ts(0))).await;
+        place(
+            &tx,
+            Order::limit(Uuid::new_v4(), Side::Sell, Price(price), qty, ts(0)),
+        )
+        .await;
     }
 
     let (rtx, rrx) = oneshot::channel();
-    tx.send(Command::Snapshot { depth: 5, reply: rtx }).await.unwrap();
+    tx.send(Command::Snapshot {
+        depth: 5,
+        reply: rtx,
+    })
+    .await
+    .unwrap();
     let snap = rrx.await.unwrap();
 
     assert_eq!(snap.bids.len(), 3);

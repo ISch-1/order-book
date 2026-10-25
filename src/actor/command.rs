@@ -29,7 +29,5 @@ pub enum Command {
         reply: Reply<BookSnapshot>,
     },
     /// Graceful shutdown — the actor loop returns after handling this.
-    Shutdown {
-        reply: Reply<()>,
-    },
+    Shutdown { reply: Reply<()> },
 }

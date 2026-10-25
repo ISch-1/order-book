@@ -32,7 +32,10 @@ pub fn init_metrics() -> anyhow::Result<PrometheusHandle> {
     metrics::describe_counter!("ob_orders_rejected_total", "orders rejected by the engine");
     metrics::describe_counter!("ob_orders_cancelled_total", "cancels removed from the book");
     metrics::describe_counter!("ob_trades_executed_total", "trades emitted by matches");
-    metrics::describe_counter!("ob_trades_qty_total", "sum of quantities across executed trades");
+    metrics::describe_counter!(
+        "ob_trades_qty_total",
+        "sum of quantities across executed trades"
+    );
     metrics::describe_histogram!(
         "ob_match_latency_micros",
         metrics::Unit::Microseconds,

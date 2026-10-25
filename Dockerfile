@@ -18,17 +18,20 @@ COPY rust-toolchain.toml ./
 COPY build.rs ./
 COPY proto ./proto
 
-# Empty src to warm the dep cache. Replaced below.
-RUN mkdir -p src && echo "fn main() {}" > src/main.rs && \
+# Stub sources to warm the dep cache. The [[bench]] declared in Cargo.toml
+# must exist for the manifest to load, so it gets a stub too. Replaced below.
+RUN mkdir -p src benches && echo "fn main() {}" > src/main.rs && \
     echo "" > src/lib.rs && \
+    echo "fn main() {}" > benches/matching.rs && \
     cargo build --release && \
-    rm -rf src
+    rm -rf src benches
 
 COPY src ./src
-COPY tests ./tests
 COPY benches ./benches
 
-RUN cargo build --release --bin order-book
+# COPY keeps the files' original mtimes, which can be older than the stub build
+# above; touch them so cargo rebuilds the crate instead of reusing the stubs.
+RUN touch src/main.rs src/lib.rs && cargo build --release --bin order-book
 
 # ------------------------------------------------------------------
 

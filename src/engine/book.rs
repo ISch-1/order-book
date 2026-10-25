@@ -114,16 +114,19 @@ impl OrderBook {
         let mut events = Vec::new();
         let order_id = order.id;
 
-        events.push(EngineEvent::OrderPlaced { order: order.clone() });
+        events.push(EngineEvent::OrderPlaced {
+            order: order.clone(),
+        });
         self.seq = self.seq.saturating_add(1);
 
         self.match_against(&mut order, &mut trades, &mut events);
 
-        // Handle residual.
+        // Handle residual. `kind` is read up front because `rest` takes `order`.
         let filled_qty = order.filled_qty();
         let remaining_qty = order.quantity;
+        let kind = order.kind;
         if remaining_qty > 0 {
-            match order.kind {
+            match kind {
                 OrderKind::Limit => {
                     let price = order.price.expect("limit orders have a price");
                     self.rest(order);
@@ -142,7 +145,11 @@ impl OrderBook {
         Ok(PlaceOutcome {
             order_id,
             filled_qty,
-            remaining_qty: if order.kind == OrderKind::Market { 0 } else { remaining_qty },
+            remaining_qty: if kind == OrderKind::Market {
+                0
+            } else {
+                remaining_qty
+            },
             trades,
             events,
         })
@@ -234,10 +241,14 @@ impl OrderBook {
                 Side::Buy => &mut self.bids,
                 Side::Sell => &mut self.asks,
             };
-            let queue = map.get_mut(&price).expect("best_price found → level exists");
+            let queue = map
+                .get_mut(&price)
+                .expect("best_price found → level exists");
 
             while taker.quantity > 0 {
-                let Some(maker) = queue.front_mut() else { break };
+                let Some(maker) = queue.front_mut() else {
+                    break;
+                };
 
                 let fill = taker.quantity.min(maker.quantity);
                 let trade = Trade {
@@ -272,7 +283,13 @@ impl OrderBook {
             Side::Buy => &mut self.bids,
             Side::Sell => &mut self.asks,
         };
-        self.index.insert(order.id, OrderLocation { side: order.side, price });
+        self.index.insert(
+            order.id,
+            OrderLocation {
+                side: order.side,
+                price,
+            },
+        );
         map.entry(price).or_default().push_back(order);
     }
 }
@@ -290,7 +307,9 @@ mod tests {
     use super::*;
     use uuid::Uuid;
 
-    fn ts(n: i64) -> i64 { n }
+    fn ts(n: i64) -> i64 {
+        n
+    }
 
     #[test]
     fn empty_book_has_no_prices() {
@@ -303,7 +322,13 @@ mod tests {
     fn limit_orders_rest_when_not_crossing() {
         let mut b = OrderBook::new("BTC-USD");
         let out = b
-            .place(Order::limit(Uuid::new_v4(), Side::Buy, Price(100), 5, ts(1)))
+            .place(Order::limit(
+                Uuid::new_v4(),
+                Side::Buy,
+                Price(100),
+                5,
+                ts(1),
+            ))
             .unwrap();
         assert!(out.trades.is_empty());
         assert_eq!(out.remaining_qty, 5);
@@ -314,8 +339,22 @@ mod tests {
     #[test]
     fn market_buy_fills_against_best_ask_first() {
         let mut b = OrderBook::new("BTC-USD");
-        b.place(Order::limit(Uuid::new_v4(), Side::Sell, Price(101), 3, ts(1))).unwrap();
-        b.place(Order::limit(Uuid::new_v4(), Side::Sell, Price(102), 10, ts(2))).unwrap();
+        b.place(Order::limit(
+            Uuid::new_v4(),
+            Side::Sell,
+            Price(101),
+            3,
+            ts(1),
+        ))
+        .unwrap();
+        b.place(Order::limit(
+            Uuid::new_v4(),
+            Side::Sell,
+            Price(102),
+            10,
+            ts(2),
+        ))
+        .unwrap();
 
         let out = b
             .place(Order::market(Uuid::new_v4(), Side::Buy, 7, ts(3)))
@@ -334,8 +373,10 @@ mod tests {
         let mut b = OrderBook::new("BTC-USD");
         let a = Uuid::new_v4();
         let bb = Uuid::new_v4();
-        b.place(Order::limit(a, Side::Sell, Price(100), 5, ts(1))).unwrap();
-        b.place(Order::limit(bb, Side::Sell, Price(100), 5, ts(2))).unwrap();
+        b.place(Order::limit(a, Side::Sell, Price(100), 5, ts(1)))
+            .unwrap();
+        b.place(Order::limit(bb, Side::Sell, Price(100), 5, ts(2)))
+            .unwrap();
 
         let out = b
             .place(Order::market(Uuid::new_v4(), Side::Buy, 6, ts(3)))
@@ -350,7 +391,8 @@ mod tests {
     fn cancel_removes_from_book() {
         let mut b = OrderBook::new("BTC-USD");
         let id = Uuid::new_v4();
-        b.place(Order::limit(id, Side::Buy, Price(100), 5, ts(1))).unwrap();
+        b.place(Order::limit(id, Side::Buy, Price(100), 5, ts(1)))
+            .unwrap();
         assert_eq!(b.cancel(id), Some(5));
         assert!(b.best_bid().is_none());
         assert_eq!(b.cancel(id), None, "second cancel is a no-op");
@@ -359,9 +401,22 @@ mod tests {
     #[test]
     fn limit_partial_fill_rests_residual() {
         let mut b = OrderBook::new("BTC-USD");
-        b.place(Order::limit(Uuid::new_v4(), Side::Sell, Price(100), 3, ts(1))).unwrap();
+        b.place(Order::limit(
+            Uuid::new_v4(),
+            Side::Sell,
+            Price(100),
+            3,
+            ts(1),
+        ))
+        .unwrap();
         let out = b
-            .place(Order::limit(Uuid::new_v4(), Side::Buy, Price(100), 10, ts(2)))
+            .place(Order::limit(
+                Uuid::new_v4(),
+                Side::Buy,
+                Price(100),
+                10,
+                ts(2),
+            ))
             .unwrap();
         assert_eq!(out.filled_qty, 3);
         assert_eq!(out.remaining_qty, 7);
@@ -387,7 +442,13 @@ mod tests {
     fn zero_quantity_is_rejected() {
         let mut b = OrderBook::new("BTC-USD");
         let err = b
-            .place(Order::limit(Uuid::new_v4(), Side::Buy, Price(100), 0, ts(1)))
+            .place(Order::limit(
+                Uuid::new_v4(),
+                Side::Buy,
+                Price(100),
+                0,
+                ts(1),
+            ))
             .unwrap_err();
         assert_eq!(err, EngineError::ZeroQuantity);
     }

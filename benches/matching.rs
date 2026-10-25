@@ -4,16 +4,32 @@
 //! Report:   `target/criterion/report/index.html`
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion, Throughput};
-use order_book::engine::{book::OrderBook, order::{Order, Side}, price::Price};
+use order_book::engine::{
+    book::OrderBook,
+    order::{Order, Side},
+    price::Price,
+};
 use uuid::Uuid;
 
 fn build_prefilled(n_per_side: usize) -> OrderBook {
     let mut b = OrderBook::new("BTC-USD");
     for i in 0..n_per_side as i64 {
-        b.place(Order::limit(Uuid::new_v4(), Side::Buy,  Price(100 - i % 10), 1 + (i as u64 % 5), i))
-            .unwrap();
-        b.place(Order::limit(Uuid::new_v4(), Side::Sell, Price(101 + i % 10), 1 + (i as u64 % 5), i))
-            .unwrap();
+        b.place(Order::limit(
+            Uuid::new_v4(),
+            Side::Buy,
+            Price(100 - i % 10),
+            1 + (i as u64 % 5),
+            i,
+        ))
+        .unwrap();
+        b.place(Order::limit(
+            Uuid::new_v4(),
+            Side::Sell,
+            Price(101 + i % 10),
+            1 + (i as u64 % 5),
+            i,
+        ))
+        .unwrap();
     }
     b
 }
@@ -76,7 +92,8 @@ fn bench_cancel(c: &mut Criterion) {
                 for i in 0..1_000i64 {
                     let id = Uuid::new_v4();
                     ids.push(id);
-                    b.place(Order::limit(id, Side::Buy, Price(90 + i % 20), 1, i)).unwrap();
+                    b.place(Order::limit(id, Side::Buy, Price(90 + i % 20), 1, i))
+                        .unwrap();
                 }
                 (b, ids)
             },
@@ -91,5 +108,10 @@ fn bench_cancel(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, bench_place_non_crossing, bench_place_crossing, bench_cancel);
+criterion_group!(
+    benches,
+    bench_place_non_crossing,
+    bench_place_crossing,
+    bench_cancel
+);
 criterion_main!(benches);

@@ -43,15 +43,20 @@ async fn main() -> anyhow::Result<()> {
     // ------- HTTP server (metrics + health) -------
     let http_app = Router::new()
         .route("/health", get(|| async { "ok" }))
-        .route("/metrics", get(move || {
-            let h = prom_handle.clone();
-            async move { h.render() }
-        }));
+        .route(
+            "/metrics",
+            get(move || {
+                let h = prom_handle.clone();
+                async move { h.render() }
+            }),
+        );
 
     let http_task = {
         let addr = cfg.http_addr;
         tokio::spawn(async move {
-            let listener = tokio::net::TcpListener::bind(addr).await.context("bind http")?;
+            let listener = tokio::net::TcpListener::bind(addr)
+                .await
+                .context("bind http")?;
             axum::serve(listener, http_app)
                 .with_graceful_shutdown(shutdown_signal())
                 .await

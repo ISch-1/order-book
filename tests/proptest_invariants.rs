@@ -3,8 +3,10 @@
 //! For each generated sequence of commands, apply them to a fresh
 //! [`OrderBook`] and check the invariants that must hold at every step.
 
-use order_book::{
-    engine::{order::{Order, OrderKind, Side}, price::Price, book::OrderBook},
+use order_book::engine::{
+    book::OrderBook,
+    order::{Order, OrderKind, Side},
+    price::Price,
 };
 use proptest::prelude::*;
 use uuid::Uuid;
@@ -14,7 +16,7 @@ use uuid::Uuid;
 enum Op {
     PlaceLimit { side: Side, price: i64, qty: u64 },
     PlaceMarket { side: Side, qty: u64 },
-    Cancel { index: usize },  // cancels the Nth known live order id
+    Cancel { index: usize }, // cancels the Nth known live order id
 }
 
 fn arb_side() -> impl Strategy<Value = Side> {
@@ -23,8 +25,11 @@ fn arb_side() -> impl Strategy<Value = Side> {
 
 fn arb_op() -> impl Strategy<Value = Op> {
     prop_oneof![
-        (arb_side(), 90i64..=110, 1u64..=20)
-            .prop_map(|(s, p, q)| Op::PlaceLimit { side: s, price: p, qty: q }),
+        (arb_side(), 90i64..=110, 1u64..=20).prop_map(|(s, p, q)| Op::PlaceLimit {
+            side: s,
+            price: p,
+            qty: q
+        }),
         (arb_side(), 1u64..=20).prop_map(|(s, q)| Op::PlaceMarket { side: s, qty: q }),
         (0usize..64).prop_map(|i| Op::Cancel { index: i }),
     ]
